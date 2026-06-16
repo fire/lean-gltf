@@ -22,6 +22,9 @@ structure Document where
   bufferViews : Array BufferView  := #[]
   buffers     : Array Buffer      := #[]
   materials   : Array Material    := #[]
+  samplers    : Array Sampler     := #[]
+  images      : Array Image       := #[]
+  textures    : Array Texture     := #[]
   deriving Repr
 
 namespace Document
@@ -41,7 +44,10 @@ def toJsonString (d : Document) : String :=
     ("accessors",   if d.accessors.isEmpty   then none else some (.arr (d.accessors.map   Accessor.toJson))),
     ("bufferViews", if d.bufferViews.isEmpty then none else some (.arr (d.bufferViews.map BufferView.toJson))),
     ("buffers",     if d.buffers.isEmpty     then none else some (.arr (d.buffers.map     Buffer.toJson))),
-    ("materials",   if d.materials.isEmpty   then none else some (.arr (d.materials.map   Material.toJson)))
+    ("materials",   if d.materials.isEmpty   then none else some (.arr (d.materials.map   Material.toJson))),
+    ("samplers",    if d.samplers.isEmpty    then none else some (.arr (d.samplers.map    Sampler.toJson))),
+    ("images",      if d.images.isEmpty      then none else some (.arr (d.images.map      Image.toJson))),
+    ("textures",    if d.textures.isEmpty    then none else some (.arr (d.textures.map    Texture.toJson)))
   ]
   JSON.render (JSON.obj? entries)
 

@@ -313,26 +313,82 @@ namespace Scene
     ]
 end Scene
 
-/-! ## Material (default PBR fallback)
+/-! ## Texture stack (`sampler`, `image`, `texture`)
 
-We don't expose materials as a real port — every primitive shares one
-default PBR material. -/
+A glTF base-colour texture is three indexed nodes: a `Sampler` (filtering +
+wrap), an `Image` (the PNG, here embedded as a buffer-view), and a `Texture`
+binding the two. A `Material` references the `Texture` by index. -/
+
+structure Sampler where
+  magFilter : Option Nat := some 9729   -- LINEAR
+  minFilter : Option Nat := some 9987   -- LINEAR_MIPMAP_LINEAR
+  wrapS     : Nat := 10497              -- REPEAT
+  wrapT     : Nat := 10497              -- REPEAT
+  deriving Repr
+
+namespace Sampler
+  def toJson (s : Sampler) : Value :=
+    obj? #[
+      ("magFilter", s.magFilter.map (fun n => .int (Int.ofNat n))),
+      ("minFilter", s.minFilter.map (fun n => .int (Int.ofNat n))),
+      ("wrapS",     some (.int (Int.ofNat s.wrapS))),
+      ("wrapT",     some (.int (Int.ofNat s.wrapT)))
+    ]
+end Sampler
+
+structure Image where
+  bufferView : Nat                      -- index into Document.bufferViews
+  mimeType   : String := "image/png"
+  name       : Option String := none
+  deriving Repr
+
+namespace Image
+  def toJson (i : Image) : Value :=
+    obj? #[
+      ("bufferView", some (.int (Int.ofNat i.bufferView))),
+      ("mimeType",   some (.str i.mimeType)),
+      ("name",       i.name.map .str)
+    ]
+end Image
+
+structure Texture where
+  source  : Nat                         -- index into Document.images
+  sampler : Option Nat := none          -- index into Document.samplers
+  name    : Option String := none
+  deriving Repr
+
+namespace Texture
+  def toJson (t : Texture) : Value :=
+    obj? #[
+      ("sampler", t.sampler.map (fun n => .int (Int.ofNat n))),
+      ("source",  some (.int (Int.ofNat t.source))),
+      ("name",    t.name.map .str)
+    ]
+end Texture
+
+/-! ## Material (PBR; grey fallback or base-colour texture) -/
 
 structure Material where
   name : Option String := some "default"
+  /-- Index into `Document.textures` for the base-colour map; `none` ⇒ grey. -/
+  baseColorTexture : Option Nat := none
   deriving Repr
 
 namespace Material
-  /-- A bland grey PBR. Importers will accept this and produce a default
-  shader. -/
   def toJson (m : Material) : Value :=
-    obj? #[
-      ("name", m.name.map .str),
-      ("pbrMetallicRoughness", some (.obj #[
+    let pbr : Value :=
+      match m.baseColorTexture with
+      | some ti => .obj #[
+          ("baseColorTexture", .obj #[("index", .int (Int.ofNat ti)), ("texCoord", .int 0)]),
+          ("metallicFactor",  .num 0.0),
+          ("roughnessFactor", .num 1.0)]
+      | none => .obj #[
           ("baseColorFactor", JSON.ofFloatArr #[0.8, 0.8, 0.8, 1.0]),
           ("metallicFactor",  .num 0.0),
-          ("roughnessFactor", .num 0.9)
-        ]))
+          ("roughnessFactor", .num 0.9)]
+    obj? #[
+      ("name", m.name.map .str),
+      ("pbrMetallicRoughness", some pbr)
     ]
 end Material
 
